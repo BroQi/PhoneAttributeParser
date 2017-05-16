@@ -12,6 +12,7 @@ import java.util.Date;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.poi.poifs.filesystem.DocumentFactoryHelper;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.ss.usermodel.CellType;
@@ -52,7 +53,7 @@ public class ParserController extends BaseController {
 	private String saveExcelDir;
 
 	/**
-	 * �ϴ��ļ������н���
+	 * 上传并解析EXCEL文件
 	 * 
 	 * @param file
 	 * @param email
@@ -150,12 +151,17 @@ public class ParserController extends BaseController {
 	}
 
 	public NumAttribution getCity(String phone) {
-		NumAttribution num = numAttributionService.findByNum(phone);
-		if (num != null) {
-			String city = num.getCity();
-			if (city.endsWith("市"))
-				city = city.substring(0, city.length() - 1);
-			num.setCity(city);
+		NumAttribution num = null;
+		if (StringUtils.isNotBlank(phone)){
+			 num = numAttributionService.findByNum(phone);
+			if (num != null) {
+				String city = num.getCity();
+				if (city.endsWith("市"))
+					city = city.substring(0, city.length() - 1);
+				num.setCity(city);
+			} else {
+				num = new NumAttribution("未知", "未知");
+			}
 		} else {
 			num = new NumAttribution("未知", "未知");
 		}
