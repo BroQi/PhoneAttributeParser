@@ -53,6 +53,11 @@ public class ParserController extends BaseController {
 	private String saveExcelDir;
 
 	/**
+	 * 手机号正则表达式
+	 */
+	private static final String REGEX_PHONE_NUMBER = "^1[34578]\\d{9}$";
+
+	/**
 	 * 上传并解析EXCEL文件
 	 * 
 	 * @param file
@@ -69,10 +74,10 @@ public class ParserController extends BaseController {
 			fileName = fileName.substring(0, fileName.lastIndexOf("."));
 		}
 
-		if (!fileType.equals("xls") && !fileType.equals("xlsx")) {
+		if (!fileType.equalsIgnoreCase("xls") && !fileType.equalsIgnoreCase("xlsx")) {
 			return super.getFailMsg("文件格式不正确");
 		}
-		InputStream is;
+		InputStream is = null;
 		try {
 			is = file.getInputStream();
 			if (!is.markSupported()) {
@@ -80,7 +85,7 @@ public class ParserController extends BaseController {
 			}
 			if (!POIFSFileSystem.hasPOIFSHeader(is) && !DocumentFactoryHelper.hasOOXMLHeader(is)) {
 				log.debug("不能解析的文件格式");
-				return super.getFailMsg("getInputStreamʽ");
+				return super.getFailMsg("文件格式无法解析");
 			}
 			XSSFWorkbook hssfWorkbook = new XSSFWorkbook(is);
 			XSSFSheet hssfSheet = hssfWorkbook.getSheetAt(0);
@@ -92,7 +97,6 @@ public class ParserController extends BaseController {
 				if (hssfRow == null) {
 					continue;
 				}
-				System.out.println("----------第" + rowNum + "条---------\n");
 				XSSFCell phone = hssfRow.getCell(0);
 				if (phone == null) {
 					continue;
@@ -101,9 +105,7 @@ public class ParserController extends BaseController {
 				NumAttribution numberAttr = this.getCity(phoneNumber);
 				hssfRow.createCell(1).setCellValue(numberAttr.getProvince());
 				hssfRow.createCell(2).setCellValue(numberAttr.getCity());
-				System.out.println("\t手机号----- ：" + phoneNumber + " -----");
 			}
-			// ���
 			String downFileName = fileName + "_已处理_" + DateUtil.dateToString(new Date()) + ".xlsx";
 			File saveDir = new File(this.saveExcelDir);
 			if (!saveDir.exists()) {
@@ -119,6 +121,14 @@ public class ParserController extends BaseController {
 			e.printStackTrace();
 			log.error("EXCEL处理出现错误" + e);
 			return super.getFailMsg("EXCEL处理出现错误");
+		} finally {
+			if (is != null) {
+				try {
+					is.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
 		}
 	}
 	
@@ -137,31 +147,34 @@ public class ParserController extends BaseController {
 		return new ResponseEntity<>(FileUtils.readFileToByteArray(file), headers, HttpStatus.CREATED);
 	}
 
+	/**
+	 * 读取EXCEL单元格值为String
+	 * @param hssfCell
+	 * @return
+	 */
 	private String getValueFromExcel(XSSFCell hssfCell) {
 		if (hssfCell.getCellTypeEnum() == CellType.BOOLEAN) {
-			// ���ز������͵�ֵ
 			return String.valueOf(hssfCell.getBooleanCellValue());
 		} else if (hssfCell.getCellTypeEnum() == CellType.NUMERIC) {
-			// ������ֵ���͵�ֵ
 			return new DecimalFormat("0").format(hssfCell.getNumericCellValue());
 		} else {
-			// �����ַ������͵�ֵ
 			return String.valueOf(hssfCell.getStringCellValue());
 		}
 	}
 
+	/**
+	 * 获取归属地信息
+	 * @param phone
+	 * @return
+	 */
 	public NumAttribution getCity(String phone) {
 		NumAttribution num = null;
-		if (StringUtils.isNotBlank(phone)){
-			 num = numAttributionService.findByNum(phone);
-			if (num != null) {
-				String city = num.getCity();
-				if (city.endsWith("市"))
-					city = city.substring(0, city.length() - 1);
-				num.setCity(city);
-			} else {
-				num = new NumAttribution("未知", "未知");
+		if (phone.matches(REGEX_PHONE_NUMBER) && (num = numAttributionService.findByNum(phone)) != null) {
+			String city = num.getCity();
+			if (city.endsWith("市")) {
+				city = city.substring(0, city.length() - 1);
 			}
+			num.setCity(city);
 		} else {
 			num = new NumAttribution("未知", "未知");
 		}
