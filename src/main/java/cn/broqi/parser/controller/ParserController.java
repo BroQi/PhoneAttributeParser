@@ -90,7 +90,7 @@ public class ParserController extends BaseController {
                 row.createCell(1).setCellValue(numberAttr.getProvince());
                 row.createCell(2).setCellValue(numberAttr.getCity());
             }
-            String downFileName = fileName + "_已处理_" + DateUtil.dateToString(new Date()) + ".xlsx";
+            String downFileName = fileName + "_已处理_" + DateUtil.dateToString(new Date()) + "." + fileType;
             File saveDir = new File(this.saveExcelDir);
             if (!saveDir.exists()) {
                 saveDir.mkdirs();
